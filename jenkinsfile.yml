@@ -63,7 +63,7 @@ pipeline {
                         sh 'git checkout main'
 
                         // Merge changes from 'development' branch
-                        sh 'git merge --allow-unrelated-histories origin/development'
+                        sh 'git merge --strategy=recursive origin/development'
                         
 
                         // Push changes to 'main' branch
