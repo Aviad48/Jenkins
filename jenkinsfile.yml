@@ -74,7 +74,7 @@ pipeline {
 
                         // Push changes to 'main' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME')]) {
-                            sh 'git remote set-url origin https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Aviad48/Jenkins.git'
+                            sh 'git remote set-url origin https://${GIT_USERNAME}:@github.com/Aviad48/Jenkins.git'
                             sh "git push origin main"
                         }
                     } catch (Exception e) {
