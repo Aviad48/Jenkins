@@ -72,7 +72,7 @@ pipeline {
                         
 
                         // Push changes to 'main' branch
-                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID)]) {
                             sh 'git remote set-url origin https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Aviad48/Jenkins.git'
                             sh "git push origin main"
                         }
