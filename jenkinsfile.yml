@@ -40,7 +40,7 @@ pipeline {
             steps {
                 script {
                     // Push the Docker image to Docker Hub 
-                    withCredentials([usernamePassword(credentialsId:, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    withCredentials([usernamePassword(credentialsId: usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
                         sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                         sh "docker push aviad539/cicd:latest"
