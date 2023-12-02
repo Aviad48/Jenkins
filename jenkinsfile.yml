@@ -43,23 +43,39 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
                         sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
-                        sh "docker push aviad539/cicd:latest"
                     }
                 }
             }
         }
+        stage('Run Docker Container') {
+    steps {
+        script {
+            // Run the container pipline
+             sh "docker run -d aviad539/cicd:$${env.BUILD_NUMBER}"
+        }
+    }
+}
+        
 
         stage('Auto Merge to Master') {
             steps {
                 script {
                     try {
-                        // Checkout the 'main' branch
+                        // Fetch the latest changes from origin/development
+                        sh 'git fetch origin development'
+
+                        //Update the local development branch
+                        sh 'git checkout development'
+                        sh 'git pull origin development  --allow-unrelated-histories --no-ff'
+
+                        // Switch to main (PROD)
                         sh 'git checkout main'
 
                         // Merge changes from 'development' branch
-                        sh 'git merge origin/development'
+                        sh 'git merge --allow-unrelated-histories origin/development'
+                        
 
-                        // Push changes to 'master' branch
+                        // Push changes to 'main' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                             sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@https://github.com/Aviad48/Jenkins.git main"
                         }
