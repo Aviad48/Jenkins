@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     // Tag the Docker image with JENKINS_BUILD_NUMBER
-                    sh "docker tag aviad539/cicd:${env.BUILD_NUMBER} Aviad539/cicd:latest"
+                    sh "docker tag aviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:latest"
                 }
             }
         }
@@ -51,15 +51,15 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Checkout the 'master' branch
-                        sh 'git checkout master'
+                        // Checkout the 'main' branch
+                        sh 'git checkout main'
 
                         // Merge changes from 'development' branch
                         sh 'git merge origin/development'
 
                         // Push changes to 'master' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                            sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/GidiA/Jenkins.git master"
+                            sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@https://github.com/Aviad48/Jenkins.git main"
                         }
                     } catch (Exception e) {
                         // Handle merge failure or check failures
