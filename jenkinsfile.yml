@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+
+    environment {
+        GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
+        GIT_USERNAME = 'aviad48'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    // Checkout the code from the 'development' branch
+                    checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'https://github.com/Aviad48/Jenkins.git']]])
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build Docker image with JENKINS_BUILD_NUMBER as a tag
+                    sh "docker build -t Aviad48/cicd:${env.BUILD_NUMBER} ."
+                }
+            }
+        }
+
+        stage('Mark Image with Jenkins Build Number') {
+            steps {
+                script {
+                    // Tag the Docker image with JENKINS_BUILD_NUMBER
+                    sh "docker tag Aviad48/cicd:${env.BUILD_NUMBER} Aviad48/cicd:latest"
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    // Push the Docker image to Docker Hub 
+                    withCredentials([usernamePassword(credentialsId: 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
+                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh "docker push aviad539/cicd:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Auto Merge to Master') {
+            steps {
+                script {
+                    try {
+                        // Checkout the 'master' branch
+                        sh 'git checkout master'
+
+                        // Merge changes from 'development' branch
+                        sh 'git merge origin/development'
+
+                        // Push changes to 'master' branch
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/GidiA/Jenkins.git master"
+                        }
+                    } catch (Exception e) {
+                        // Handle merge failure or check failures
+                        error "Error occurred while merging branches: ${e.message}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                catchError {
+                    // Ensure cleanup even on failure
+                    sh 'git reset --hard HEAD' // Reset in case of a failed merge
+                }
+            }
+        }
+        success {
+            script {
+                echo 'Build, push, and merge successful'
+            }
+        }
+        failure {
+            echo 'Build, push, or merge failed'
+        }
+    }
+}
