@@ -4,7 +4,7 @@ pipeline {
     environment {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
-        GIThub_Secondery = 31ba46a7-1060-422c-bb90-1788ea3d08d7
+        GIThub_Secondery = '31ba46a7-1060-422c-bb90-1788ea3d08d7'
    
         
     }
