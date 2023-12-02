@@ -57,7 +57,7 @@ pipeline {
 
                         //Update the local development branch
                         sh 'git checkout development'
-                        sh 'git pull origin development  --allow-unrelated-histories --no-ff'
+                        sh 'git pull origin development'
 
                         // Switch to main (PROD)
                         sh 'git checkout main'
