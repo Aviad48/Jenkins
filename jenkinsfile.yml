@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
+        GITHUB_APP_CREDENTIALS_ID = credentials('45458158-001d-4fe4-8ca9-8acafca9ff3f')
         GIT_USERNAME = 'aviad48'
-        GIT_PASSWORD = 'St@rt2be@Git2023'
+        
         
    
         
