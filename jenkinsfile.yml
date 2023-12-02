@@ -4,7 +4,7 @@ pipeline {
     environment {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
-        DOCKER_PASSWORD = credentials('e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f')
+        DOCKER_PASSWORD = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
         
     }
 
