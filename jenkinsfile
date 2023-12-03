@@ -5,8 +5,6 @@ pipeline {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
         DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
-   
-        
     }
 
     stages {
@@ -28,29 +26,52 @@ pipeline {
             }
         }
 
-       
-
         stage('Push Docker Image') {
             steps {
                 script {
                     // Push the Docker image to Docker Hub 
                     withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh """  echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin """ 
-                    sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
+                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                     }
                 }
             }
         }
 
-        stage('Run Docker Container') {
-           steps {
-               script {
-                   // Run the Docker container
-                sh "docker run -d  aviad539/cicd:${BUILD_NUMBER}"
+        stage('Manual Deployment Approval') {
+            steps {
+                script {
+                    // Add a manual input for deployment approval
+                    input "Deploy to local Docker Engine?"
                 }
             }
         }
-  
+
+        stage('Deploy to Local Docker Engine') {
+            steps {
+                script {
+                    // Stop the existing container (if any)
+                    sh "docker stop aviad539/cicd:${env.BUILD_NUMBER} || true"  // Ignore errors if the container is not running
+
+                    // Pull the latest Docker image from Docker Hub
+                    sh "docker pull aviad539/cicd:${env.BUILD_NUMBER}"
+
+                    // Run the new Docker container
+                    sh "docker run -d --name  aviad539/cicd:${env.BUILD_NUMBER}"
+
+                    // Validate the running application
+                    if (!validateApplication()) {
+                        // If validation fails, perform rollback to the previous version
+                        echo "Validation failed. Rolling back to the previous version..."
+                        sh "docker stop aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh "docker rm aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh "docker run -d --name maviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:previous_version"
+                        error "Rollback completed. Deployment failed."
+                    }
+                }
+            }
+        }
+
         stage('Auto Merge to Master') {
             steps {
                 script {
@@ -58,7 +79,7 @@ pipeline {
                         // Fetch the latest changes from origin/development
                         sh 'git fetch origin development'
 
-                        //Update the local development branch
+                        // Update the local development branch
                         sh 'git checkout development'
                         sh 'git pull origin development --allow-unrelated-histories --no-ff'
 
@@ -67,11 +88,10 @@ pipeline {
 
                         // Merge changes from 'development' branch
                         sh 'git merge --allow-unrelated-histories origin/development'
-                        
+
                         // Configure Git with user name and email
                         sh 'git config user.name "aviad48"'
                         sh 'git config user.email "aviaddayan1991@gmail.com"'
-                        
 
                         // Push changes to 'main' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
@@ -97,11 +117,20 @@ pipeline {
         }
         success {
             script {
-                echo 'Build, push, and merge successful'
+                echo 'Build, push, and deploy successful'
             }
         }
         failure {
-            echo 'Build, push, or merge failed'
+            echo 'Build, push, or deploy failed'
         }
     }
+}
+
+def validateApplication() {
+    // Implement your application validation logic here
+    // Return true if the application is running and valid, false otherwise
+    // You might want to check the health endpoint or perform other checks
+    // Example: sh "curl -s http://localhost:your_app_port/health | grep '\"status\": \"UP\"'"
+    // Adjust this based on your application's health check mechanism
+    return true
 }
