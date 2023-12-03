@@ -5,8 +5,6 @@ pipeline {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
         DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
-   
-        
     }
 
     stages {
@@ -28,59 +26,100 @@ pipeline {
             }
         }
 
-       
-
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Push the Docker image to Docker Hub 
+                    // Push the Docker image to Docker Hub
                     withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh """  echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin """ 
-                    sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh """  
+                            echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin
+                            docker push aviad539/cicd:${env.BUILD_NUMBER}
+                        """
                     }
                 }
             }
         }
 
         stage('Run Docker Container') {
-           steps {
-               script {
-                   // Run the Docker container
-                sh "docker run -d --name my_app  aviad539/cicd:${BUILD_NUMBER}" 
+            steps {
+                script {
+                    def containerName = 'my_app'
+                    def imageName = "aviad539/cicd:${env.BUILD_NUMBER}"
+
+                    // Run the Docker container
+                    sh "docker run -d --name ${containerName} ${imageName}"
+
+                    // Wait for the container to start (you may need to adjust the sleep duration)
+                    sleep(time: 10, unit: 'SECONDS')
+
+                    // Check the health of the container
+                    def healthCheckCommand = "docker inspect --format='{{.State.Health.Status}}' ${containerName}"
+                    def healthStatus = sh(script: healthCheckCommand, returnStatus: true).trim()
+
+                    if (healthStatus != 'healthy') {
+                        echo "Health check failed. Rolling back to the previous version."
+
+                        // Stop and remove the current container
+                        sh "docker stop ${containerName}"
+                        sh "docker rm ${containerName}"
+
+                        // Pull the previous version of the image
+                        sh "docker pull aviad539/cicd:previous_version"
+
+                        // Run the previous version of the container
+                        sh "docker run -d --name ${containerName} aviad539/cicd:previous_version"
+
+                        // You may also want to update any environment variables or configurations as needed
+
+                        error "Rollback complete"
+                    } else {
+                        echo "Health check passed. Application is running successfully."
+
+                        // Save the current image as the previous version for potential rollback
+                        sh "docker tag ${imageName} aviad539/cicd:previous_version"
+                    }
                 }
             }
         }
-  
-        stage('Auto Merge to Master') {
+
+        stage('Manual Approval for Deployment') {
             steps {
                 script {
-                    try {
-                        // Fetch the latest changes from origin/development
-                        sh 'git fetch origin development'
+                    // Display a message and wait for manual approval
+                    def userInput = input(
+                        id: 'deployApproval',
+                        message: 'Do you want to deploy the application to the local Docker Engine?',
+                        submitter: 'admin',
+                        parameters: [choice(name: 'DEPLOY_APPROVAL', choices: 'Yes\nNo', description: 'Approve or deny deployment')]
+                    )
 
-                        //Update the local development branch
-                        sh 'git checkout development'
-                        sh 'git pull origin development --allow-unrelated-histories --no-ff'
-
-                        // Switch to main (PROD)
-                        sh 'git checkout main'
-
-                        // Merge changes from 'development' branch
-                        sh 'git merge --allow-unrelated-histories origin/development'
-                        
-                        // Configure Git with user name and email
-                        sh 'git config user.name "aviad48"'
-                        sh 'git config user.email "aviaddayan1991@gmail.com"'
-                        
-
-                        // Push changes to 'main' branch
-                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                            sh "git push -f https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Aviad48/Jenkins.git main"
-                        }
-                    } catch (Exception e) {
-                        // Handle merge failure or check failures
-                        error "Error occurred while merging branches: ${e.message}"
+                    // Check user input and proceed or abort deployment
+                    if (userInput == 'Yes') {
+                        echo 'Deployment approved. Proceeding with deployment steps.'
+                    } else {
+                        error 'Deployment denied. Aborting deployment.'
                     }
+                }
+            }
+        }
+
+        stage('Deploy to Local Docker Engine') {
+            steps {
+                script {
+                    def containerName = 'my_app'
+                    def imageName = "aviad539/cicd:${env.BUILD_NUMBER}"
+
+                    // Stop the current container
+                    sh "docker stop ${containerName}"
+
+                    // Remove the current container
+                    sh "docker rm ${containerName}"
+
+                    // Pull the latest version of the image
+                    sh "docker pull ${imageName}"
+
+                    // Run the updated version of the container
+                    sh "docker run -d --name ${containerName} ${imageName}"
                 }
             }
         }
@@ -97,11 +136,11 @@ pipeline {
         }
         success {
             script {
-                echo 'Build, push, and merge successful'
+                echo 'Build, push, and deploy successful'
             }
         }
         failure {
-            echo 'Build, push, or merge failed'
+            echo 'Build, push, or deploy failed'
         }
     }
 }
