@@ -5,13 +5,13 @@ pipeline {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
         DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
+        DOCKER_CONTAINER_NAME = 'your_container_name'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    // Checkout the code from the 'development' branch
                     checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'https://github.com/Aviad48/Jenkins.git']]])
                 }
             }
@@ -20,7 +20,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image with JENKINS_BUILD_NUMBER as a tag
                     sh "docker build -t aviad539/cicd:${env.BUILD_NUMBER} ."
                 }
             }
@@ -29,12 +28,9 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Push the Docker image to Docker Hub
                     withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh """  
-                            echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin
-                            docker push aviad539/cicd:${env.BUILD_NUMBER}
-                        """
+                        sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
+                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -43,85 +39,54 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    def containerName = 'my_app'
+                    def DOCKER_CONTAINER_NAME = 'my_app'
                     def imageName = "aviad539/cicd:${env.BUILD_NUMBER}"
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
+                }
+            }
+        }
 
-                    // Run the Docker container
-                    sh "docker run -d --name ${containerName} ${imageName}"
+        stage('Validate Application') {
+            steps {
+                script {
+                    def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    // Wait for the container to start (you may need to adjust the sleep duration)
-                    sleep(time: 10, unit: 'SECONDS')
-
-                    // Check the health of the container
-                    def healthCheckCommand = "docker inspect --format='{{ .State.Running}}' ${containerName}"
-                    def healthStatus = sh(script: healthCheckCommand, returnStatus: true).trim()
-
-                    if (healthStatus != 'healthy') {
-                        echo "Health check failed. Rolling back to the previous version."
-
-                        // Stop and remove the current container
-                        sh "docker stop ${containerName}"
-                        sh "docker rm ${containerName}"
-
-                        // Pull the previous version of the image
-                        sh "docker pull aviad539/cicd:previous_version"
-
-                        // Run the previous version of the container
-                        sh "docker run -d --name ${containerName} aviad539/cicd:previous_version"
-
-                        // You may also want to update any environment variables or configurations as needed
-
-                        error "Rollback complete"
-                    } else {
-                        echo "Health check passed. Application is running successfully."
-
-                        // Save the current image as the previous version for potential rollback
-                        sh "docker tag ${imageName} aviad539/cicd:previous_version"
+                    if (appStatus != 'running') {
+                        error "Application validation failed. Rolling back to the previous version."
                     }
                 }
             }
         }
 
-        stage('Manual Approval for Deployment') {
+        stage('Auto Merge to Master') {
             steps {
                 script {
-                    // Display a message and wait for manual approval
-                    def userInput = input(
-                        id: 'deployApproval',
-                        message: 'Do you want to deploy the application to the local Docker Engine?',
-                        submitter: 'admin',
-                        parameters: [choice(name: 'DEPLOY_APPROVAL', choices: 'Yes\nNo', description: 'Approve or deny deployment')]
-                    )
-
-                    // Check user input and proceed or abort deployment
-                    if (userInput == 'Yes') {
-                        echo 'Deployment approved. Proceeding with deployment steps.'
-                    } else {
-                        error 'Deployment denied. Aborting deployment.'
+                    try {
+                        // ... (existing merge steps)
+                    } catch (Exception e) {
+                        error "Error occurred while merging branches: ${e.message}"
                     }
                 }
             }
         }
 
-        stage('Validate and Push to Docker Repo') {
+        stage('Manual Deployment') {
             steps {
                 script {
-                    // Check the health of the application (customize this based on your application's health check)
-                    def validationCommand = "<your validation command here>"
-                    def validationResult = sh(script: validationCommand, returnStatus: true).trim()
+                    input "Deploy to Docker Engine?"
+                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
+                    sh "docker pull ${imageName}"
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
+                }
+            }
+        }
 
-                    if (validationResult == 0) {
-                        echo "Validation passed. Pushing the Docker image to Docker Hub."
-
-                        // Push the Docker image to Docker Hub
-                        withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                            sh """  
-                                echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin
-                                docker push aviad539/cicd:${env.BUILD_NUMBER}
-                            """
-                        }
-                    } else {
-                        error "Validation failed. Aborting the deployment."
+        stage('Push to Docker Repo') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
+                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -132,18 +97,21 @@ pipeline {
         always {
             script {
                 catchError {
-                    // Ensure cleanup even on failure
-                    sh 'git reset --hard HEAD' // Reset in case of a failed merge
+                    // Rollback in case of failure
+                    echo 'Rolling back to the previous version...'
+                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} aviad539/cicd:previous_version"  // Replace with the actual previous version tag
                 }
+                sh 'git reset --hard HEAD'
             }
         }
         success {
             script {
-                echo 'Build, push, and deploy successful'
+                echo 'Build, push, merge, deploy, validation, and push to Docker Repo successful'
             }
         }
         failure {
-            echo 'Build, push, or deploy failed'
+            echo 'Build, push, merge, deploy, or validation failed. Rollback performed.'
         }
     }
 }
