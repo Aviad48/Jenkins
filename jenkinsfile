@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
-        GIT_USERNAME = 'aviad48'
-        DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
+        GITHUB_APP_CREDENTIALS_ID = credentials('45458158-001d-4fe4-8ca9-8acafca9ff3f')
+        GIT_USERNAME = credentials('aviad48')
+        GIT_PASSWORD = credentials('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')
+        DOCKER_Hub_ID = credentials('e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f')
    
         
     }
