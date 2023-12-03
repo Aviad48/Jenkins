@@ -56,29 +56,6 @@ pipeline {
                     def healthCheckCommand = "docker inspect --format='{{.State.Health.Status}}' ${containerName}"
                     def healthStatus = sh(script: healthCheckCommand, returnStatus: true).trim()
 
-                    if (healthStatus != 'healthy') {
-                        echo "Health check failed. Rolling back to the previous version."
-
-                        // Stop and remove the current container
-                        sh "docker stop ${containerName}"
-                        sh "docker rm ${containerName}"
-
-                        // Pull the previous version of the image
-                        sh "docker pull aviad539/cicd:previous_version"
-
-                        // Run the previous version of the container
-                        sh "docker run -d --name ${containerName} aviad539/cicd:previous_version"
-
-                        // You may also want to update any environment variables or configurations as needed
-
-                        error "Rollback complete"
-                    } else {
-                        echo "Health check passed. Application is running successfully."
-
-                        // Save the current image as the previous version for potential rollback
-                        sh "docker tag ${imageName} aviad539/cicd:previous_version"
-                    }
-                }
             }
         }
 
