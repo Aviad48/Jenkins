@@ -4,9 +4,10 @@ pipeline {
     environment {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
-        DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
-   
-        
+        DOCKER_HUB_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
+        DOCKER_CONTAINER_NAME = 'my_app'
+        DOCKER_IMAGE_NAME = "aviad539/cicd"
+        PREVIOUS_BUILD_NUMBER = "${currentBuild.number - 1}"  // Get the previous build number
     }
 
     stages {
@@ -23,34 +24,54 @@ pipeline {
             steps {
                 script {
                     // Build Docker image with JENKINS_BUILD_NUMBER as a tag
-                    sh "docker build -t aviad539/cicd:${env.BUILD_NUMBER} ."
+                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} ."
                 }
             }
         }
-
-       
 
         stage('Push Docker Image') {
             steps {
                 script {
                     // Push the Docker image to Docker Hub 
-                    withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh """  echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin """ 
-                    sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                    withCredentials([usernamePassword(credentialsId: DOCKER_HUB_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
+                        sh "docker push ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     }
                 }
             }
         }
 
         stage('Run Docker Container') {
-           steps {
-               script {
-                   // Run the Docker container
-                sh "docker run -d  aviad539/cicd:${BUILD_NUMBER}"
+            steps {
+                script {
+                    def imageName = "${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
+
+                    // Check if the container exists
+                    def existingContainerId = sh(script: "docker ps -q -f name=${DOCKER_CONTAINER_NAME}", returnStdout: true).trim()
+
+                    // Remove the container if it exists
+                    if (existingContainerId) {
+                        sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
+                    }
+
+                    // Run Docker container in detached mode
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
                 }
             }
         }
-  
+
+        stage('Validate Application') {
+            steps {
+                script {
+                    def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
+
+                    if (appStatus != 'running') {
+                        error "Application validation failed. Rolling back to the previous version."
+                    }
+                }
+            }
+        }
+
         stage('Auto Merge to Master') {
             steps {
                 script {
@@ -69,9 +90,8 @@ pipeline {
                         sh 'git merge --allow-unrelated-histories origin/development'
                         
                         // Configure Git with user name and email
-                        sh 'git config user.name "aviad48"'
-                        sh 'git config user.email "aviaddayan1991@gmail.com"'
-                        
+                        sh 'git config --global user.name "aviad48"'
+                        sh 'git config --global user.email "aviaddayan1991@gmail.com"'
 
                         // Push changes to 'main' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
@@ -79,7 +99,9 @@ pipeline {
                         }
                     } catch (Exception e) {
                         // Handle merge failure or check failures
-                        error "Error occurred while merging branches: ${e.message}"
+                        echo "Error occurred while merging branches: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error "Failed to merge branches"
                     }
                 }
             }
@@ -90,18 +112,22 @@ pipeline {
         always {
             script {
                 catchError {
-                    // Ensure cleanup even on failure
-                    sh 'git reset --hard HEAD' // Reset in case of a failed merge
+                    // Rollback in case of failure
+                    echo 'Rolling back to the previous version...'
+                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
+                    sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  // Use the previous build number for tagging
                 }
+                sh 'git reset --hard HEAD'
             }
         }
         success {
             script {
-                echo 'Build, push, and merge successful'
+                echo 'Build, push, merge, and deploy successful'
             }
         }
         failure {
-            echo 'Build, push, or merge failed'
+            echo 'Build, push, merge, or deploy failed. Rollback performed.'
         }
     }
 }
