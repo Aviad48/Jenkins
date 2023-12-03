@@ -74,7 +74,7 @@ pipeline {
                         
 
                         // Push changes to 'main' branch
-                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID)]) {
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                             sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@https://github.com/Aviad48/Jenkins.git main"
                         }
                     } catch (Exception e) {
