@@ -57,7 +57,7 @@ pipeline {
                         sh 'git checkout main'
 
                         // Merge changes from 'development' branch
-                        sh 'git merge --strategy=recursive origin/development'
+                        sh 'git merge ---allow-unrelated-histories origin/development'
                         
                         // Configure Git with user name and email
                         sh 'git config user.name "aviad48"'
