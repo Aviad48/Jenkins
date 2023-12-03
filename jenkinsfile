@@ -23,19 +23,12 @@ pipeline {
             steps {
                 script {
                     // Build Docker image with JENKINS_BUILD_NUMBER as a tag
-                    sh "docker build -t aviad539/cicd:${env.BUILD_NUMBER} ."
+                    sh "docker build -t aviad539/cicd:${BUILD_NUMBER} ."
                 }
             }
         }
 
-        stage('Mark Image with Jenkins Build Number') {
-            steps {
-                script {
-                    // Tag the Docker image with JENKINS_BUILD_NUMBER
-                    sh "docker tag aviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:latest"
-                }
-            }
-        }
+       
 
         stage('Push Docker Image') {
             steps {
