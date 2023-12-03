@@ -130,11 +130,11 @@ pipeline {
     }
 }
 
-def validateApplication() {
+def validateApplication(containerName) {
     // Implement your application validation logic here
     // Return true if the application is running and valid, false otherwise
     // You might want to check the health endpoint or perform other checks
-    // Example: sh "curl -s http://localhost:your_app_port/health | grep '\"status\": \"UP\"'"
+    // Example: sh "curl -s http://localhost:app_port/health | grep '\"status\": \"UP\"'"
     // Adjust this based on your application's health check mechanism
     return true
 }
