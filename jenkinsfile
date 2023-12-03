@@ -57,7 +57,7 @@ pipeline {
                     sh "docker pull aviad539/cicd:${env.BUILD_NUMBER}"
 
                     // Run the new Docker container and capture the container name
-                    def containerName = sh(script: "docker run -d --name my_app aviad539/cicd:${env.BUILD_NUMBER}", returnStdout: true).trim()
+                    def containerName = sh(script: "docker run -d  aviad539/cicd:${env.BUILD_NUMBER}", returnStdout: true).trim()
 
 
                    // Print the container name
