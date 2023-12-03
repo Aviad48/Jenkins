@@ -41,6 +41,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Run Docker Container') {
+           steps {
+               script {
+                   // Run the Docker container
+                sh "docker run -d  aviad539/cicd:${BUILD_NUMBER}"
+                }
+            }
+        }
   
         stage('Auto Merge to Master') {
             steps {
