@@ -51,25 +51,21 @@ pipeline {
             steps {
                 script {
                     // Stop the existing container (if any)
-                    sh "docker stop aviad539/cicd:${env.BUILD_NUMBER} || true"  // Ignore errors if the container is not running
+                    sh "docker stop my_app_container || true"  // Ignore errors if the container is not running
 
                     // Pull the latest Docker image from Docker Hub
                     sh "docker pull aviad539/cicd:${env.BUILD_NUMBER}"
 
-                    // Run the new Docker container and capture the container name
-                    def containerName = sh(script: "docker run -d  aviad539/cicd:${env.BUILD_NUMBER}", returnStdout: true).trim()
-
-
-                   // Print the container name
-                    echo "Container Name: ${containerName}"
+                    // Run the new Docker container
+                    sh "docker run -d --name my_app_container aviad539/cicd:${env.BUILD_NUMBER}"
 
                     // Validate the running application
-                    if (!validateApplication(containerName)) {
+                    if (!validateApplication()) {
                         // If validation fails, perform rollback to the previous version
                         echo "Validation failed. Rolling back to the previous version..."
-                        sh "docker stop ${containerName}"
-                        sh "docker rm ${containerName}"
-                        sh "docker run -d --name my_app aviad539/cicd:previous_version"
+                        sh "docker stop my_app_container"
+                        sh "docker rm my_app_container"
+                        sh "docker run -d --name my_app_container aviad539/cicd:previous_version"
                         error "Rollback completed. Deployment failed."
                     }
                 }
@@ -130,11 +126,11 @@ pipeline {
     }
 }
 
-def validateApplication(containerName) {
+def validateApplication() {
     // Implement your application validation logic here
     // Return true if the application is running and valid, false otherwise
     // You might want to check the health endpoint or perform other checks
-    // Example: sh "curl -s http://localhost:app_port/health | grep '\"status\": \"UP\"'"
+    // Example: sh "curl -s http://localhost:your_app_port/health | grep '\"status\": \"UP\"'"
     // Adjust this based on your application's health check mechanism
     return true
 }
