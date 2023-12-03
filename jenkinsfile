@@ -56,16 +56,20 @@ pipeline {
                     // Pull the latest Docker image from Docker Hub
                     sh "docker pull aviad539/cicd:${env.BUILD_NUMBER}"
 
-                    // Run the new Docker container
-                    sh "docker run -d aviad539/cicd:${env.BUILD_NUMBER}"
+                    // Run the new Docker container and capture the container name
+                    def containerName = sh(script: "docker run -d --name my_app aviad539/cicd:${env.BUILD_NUMBER}", returnStdout: true).trim()
+
+
+                   // Print the container name
+                    echo "Container Name: ${containerName}"
 
                     // Validate the running application
-                    if (!validateApplication()) {
+                    if (!validateApplication(containerName)) {
                         // If validation fails, perform rollback to the previous version
                         echo "Validation failed. Rolling back to the previous version..."
-                        sh "docker stop aviad539/cicd:${env.BUILD_NUMBER}"
-                        sh "docker rm aviad539/cicd:${env.BUILD_NUMBER}"
-                        sh "docker run -d aviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:previous_version"
+                        sh "docker stop ${containerName}"
+                        sh "docker rm ${containerName}"
+                        sh "docker run -d --name my_app aviad539/cicd:previous_version"
                         error "Rollback completed. Deployment failed."
                     }
                 }
