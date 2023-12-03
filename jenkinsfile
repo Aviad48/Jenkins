@@ -4,6 +4,7 @@ pipeline {
     environment {
         GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
+        DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
    
         
     }
@@ -40,7 +41,7 @@ pipeline {
             steps {
                 script {
                     // Push the Docker image to Docker Hub 
-                    withCredentials([usernamePassword(credentialsId: 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
                         sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                     }
