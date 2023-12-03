@@ -23,7 +23,7 @@ pipeline {
             steps {
                 script {
                     // Build Docker image with JENKINS_BUILD_NUMBER as a tag
-                    sh "docker build -t aviad539/cicd:${BUILD_NUMBER} ."
+                    sh "docker build -t aviad539/cicd:${env.BUILD_NUMBER} ."
                 }
             }
         }
@@ -35,8 +35,8 @@ pipeline {
                 script {
                     // Push the Docker image to Docker Hub 
                     withCredentials([usernamePassword(credentialsId: DOCKER_Hub_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                    sh """  echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin """ 
+                    sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
                     }
                 }
             }
