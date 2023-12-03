@@ -57,7 +57,7 @@ pipeline {
                     sh "docker pull aviad539/cicd:${env.BUILD_NUMBER}"
 
                     // Run the new Docker container
-                    sh "docker run -d --name  aviad539/cicd:${env.BUILD_NUMBER}"
+                    sh "docker run -d aviad539/cicd:${env.BUILD_NUMBER}"
 
                     // Validate the running application
                     if (!validateApplication()) {
@@ -65,7 +65,7 @@ pipeline {
                         echo "Validation failed. Rolling back to the previous version..."
                         sh "docker stop aviad539/cicd:${env.BUILD_NUMBER}"
                         sh "docker rm aviad539/cicd:${env.BUILD_NUMBER}"
-                        sh "docker run -d --name maviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:previous_version"
+                        sh "docker run -d aviad539/cicd:${env.BUILD_NUMBER} aviad539/cicd:previous_version"
                         error "Rollback completed. Deployment failed."
                     }
                 }
