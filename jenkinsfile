@@ -2,10 +2,8 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_APP_CREDENTIALS_ID = credentials('45458158-001d-4fe4-8ca9-8acafca9ff3f')
+        GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
-        
-        
    
         
     }
@@ -65,17 +63,16 @@ pipeline {
                         sh 'git checkout main'
 
                         // Merge changes from 'development' branch
-                        sh 'git merge --strategy=recursive -m "Automated merge to main" origin/development'
-
-
+                        sh 'git merge --strategy=recursive origin/development'
+                        
                         // Configure Git with user name and email
                         sh 'git config user.name "aviad48"'
                         sh 'git config user.email "aviaddayan1991@gmail.com"'
                         
 
                         // Push changes to 'main' branch
-                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]){
-                            sh "git push https://https://${GIT_USERNAME}:${GIT_PASSWORD}'@https://github.com/Aviad48/Jenkins.git main"
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            sh "git push origin main"
                         }
                     } catch (Exception e) {
                         // Handle merge failure or check failures
