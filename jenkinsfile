@@ -72,7 +72,7 @@ pipeline {
             }
         }
 
-        stage('Auto Merge to Master') {
+        stage('Auto Merge to main') {
             steps {
                 script {
                     try {
