@@ -50,10 +50,10 @@ pipeline {
                     sh "docker run -d --name ${containerName} ${imageName}"
 
                     // Wait for the container to start (you may need to adjust the sleep duration)
-                    sleep(time: 30, unit: 'SECONDS')
+                    sleep(time: 10, unit: 'SECONDS')
 
                     // Check the health of the container
-                    def healthCheckCommand = "docker inspect --format='{{.State.Health.Status}}' ${containerName}"
+                    def healthCheckCommand = "docker inspect --format='{{ .State.Running}}' ${containerName}"
                     def healthStatus = sh(script: healthCheckCommand, returnStatus: true).trim()
 
                     if (healthStatus != 'healthy') {
