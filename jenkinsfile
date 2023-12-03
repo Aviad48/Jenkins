@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        GITHUB_APP_CREDENTIALS_ID = '5e2f0918-c53c-47b4-8ef2-25d46c86c0ba'
+        GITHUB_APP_CREDENTIALS_ID = '45458158-001d-4fe4-8ca9-8acafca9ff3f'
         GIT_USERNAME = 'aviad48'
         DOCKER_Hub_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
    
@@ -72,7 +72,7 @@ pipeline {
                         
 
                         // Push changes to 'main' branch
-                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID )]) {
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                             sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@https://github.com/Aviad48/Jenkins.git main"
                         }
                     } catch (Exception e) {
