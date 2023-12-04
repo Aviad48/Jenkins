@@ -7,7 +7,6 @@ pipeline {
         DOCKER_HUB_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
         DOCKER_CONTAINER_NAME = 'my_app'
         DOCKER_IMAGE_NAME = "aviad539/cicd"
-        DOCKER_IMAGE_TAG = "latest"
         PREVIOUS_BUILD_NUMBER = "${currentBuild.number - 1}"  // Get the previous build number
     }
 
@@ -24,8 +23,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image with a tag
-                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ."
+                    // Build Docker image with JENKINS_BUILD_NUMBER as a tag
+                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} ."
                 }
             }
         }
@@ -36,7 +35,7 @@ pipeline {
                     // Push the Docker image to Docker Hub 
                     withCredentials([usernamePassword(credentialsId: DOCKER_HUB_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
-                        sh "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                        sh "docker push ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -45,7 +44,7 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    def imageName = "${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    def imageName = "${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
 
                     // Check if the container exists
                     def existingContainerId = sh(script: "docker ps -q -f name=${DOCKER_CONTAINER_NAME}", returnStdout: true).trim()
@@ -66,15 +65,15 @@ pipeline {
                 script {
                     def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    if (appStatus = 'true') {
-stage('Auto Merge to Master') {
-            steps {
-                script {
-                    try {
+                    if (appStatus = 'running') {
+                     stage('Auto Merge to Master') {
+                     steps {
+                     script {
+                     try {
                         // Fetch the latest changes from origin/development
                         sh 'git fetch origin development'
 
-                        // Update the local development branch
+                        //Update the local development branch
                         sh 'git checkout development'
                         sh 'git pull origin development --allow-unrelated-histories --no-ff'
 
@@ -96,20 +95,21 @@ stage('Auto Merge to Master') {
                     } catch (Exception e) {
                         // Handle merge failure or check failures
                         echo "Error occurred while merging branches: ${e.message}"
+                        currentBuild.result = 'FAILURE'
                         error "Failed to merge branches"
                     }
                 }
             }
-        
-                    }
+        }
+                    }//end if 
                 }
             }
         }
 
-        }
-    }
+        
+    
 
-    post {
+     post {
         always {
             script {
                 catchError {
@@ -117,7 +117,7 @@ stage('Auto Merge to Master') {
                     echo 'Rolling back to the previous version...'
                     sh "docker stop ${DOCKER_CONTAINER_NAME}"
                     sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
-                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  // Use the appropriate Docker image tag
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  // Use the previous build number for tagging
                 }
                 sh 'git reset --hard HEAD'
             }
@@ -128,7 +128,9 @@ stage('Auto Merge to Master') {
             }
         }
         failure {
-            echo 'Build, push, merge, or deploy failed. Rollback performed.'
+                   echo 'Build, push, merge, or deploy failed. Rollback performed.'
         }
+      } 
+
     }
 }
