@@ -65,8 +65,17 @@ pipeline {
                 script {
                     def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    if (appStatus != 'true') {
-                        error "Application validation failed. Rolling back to the previous version."
+                    if (appStatus == 'true') {
+                
+                        echo "Container ${DOCKER_CONTAINER_NAME} is running"
+                    }
+                   else{
+               echo "Container ${DOCKER_CONTAINER_NAME} is down"
+               // Rollback in case of failure
+               echo 'Rolling back to the previous version...'
+                sh "docker stop ${DOCKER_CONTAINER_NAME}"
+                sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
+                sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  
                     }
                 }
             }
@@ -90,9 +99,8 @@ pipeline {
                         sh 'git merge --allow-unrelated-histories origin/development'
                         
                         // Configure Git with user name and email
-                        sh 'git config user.name "aviad48"'
-                        sh 'git config user.email "aviaddayan1991@gmail.com"'
-                        
+                        sh 'git config --global user.name "aviad48"'
+                        sh 'git config --global user.email "aviaddayan1991@gmail.com"'
 
                         // Push changes to 'main' branch
                         withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
@@ -107,17 +115,11 @@ pipeline {
                 }
             }
         }
-    
+    }
 
-     post {
+    post {
         always {
             script {
-                catchError {
-                    // Rollback in case of failure
-                    echo 'Rolling back to the previous version...'
-                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
-                    sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
-                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}" 
                 sh 'git reset --hard HEAD'
             }
         }
@@ -127,9 +129,7 @@ pipeline {
             }
         }
         failure {
-                   echo 'Build, push, merge, or deploy failed. Rollback performed.'
+            echo 'Build, push, merge, or deploy failed. Rollback performed.'
         }
-     } 
-
     }
 }
