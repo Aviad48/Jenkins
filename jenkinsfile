@@ -15,7 +15,7 @@ pipeline {
             steps {
                 script {
                     // Checkout the code from the 'development' branch
-                    checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'your_repository_url']]])
+                    checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'https://github.com/Aviad48/Jenkins.git']]])
                 }
             }
         }
