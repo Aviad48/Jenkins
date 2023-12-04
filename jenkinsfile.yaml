@@ -56,11 +56,14 @@ pipeline {
 
                     // Run Docker container in detached mode
                     sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
+
+                    // Sleep for 10 seconds
+                        sleep time: 10, unit: 'SECONDS'
                 }
             }
         }                   
         
-       stages {
+       
         stage('Check Container Status') {
             steps {
                 script {
@@ -79,7 +82,7 @@ pipeline {
                 }
             }
         }
-    }
+    
 
          
 
