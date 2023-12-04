@@ -65,8 +65,16 @@ pipeline {
                 script {
                     def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    if (appStatus != 'true') {
-                        error "Application validation failed. Rolling back to the previous version."
+                    if (appStatus == 'true') {
+                        echo "Container ${DOCKER_CONTAINER_NAME} is running"
+                    }
+                   else{
+               echo "Container ${DOCKER_CONTAINER_NAME} is down"
+               // Rollback in case of failure
+               echo 'Rolling back to the previous version...'
+                sh "docker stop ${DOCKER_CONTAINER_NAME}"
+                sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
+                sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  
                     }
                 }
             }
@@ -111,13 +119,6 @@ pipeline {
     post {
         always {
             script {
-                catchError {
-                    // Rollback in case of failure
-                    echo 'Rolling back to the previous version...'
-                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
-                    sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
-                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  // Use the previous build number for tagging
-                }
                 sh 'git reset --hard HEAD'
             }
         }
