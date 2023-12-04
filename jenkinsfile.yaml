@@ -60,10 +60,13 @@ pipeline {
                     } else {
                         echo "Error checking container status"
                         // Additional actions for handling an error in checking the container status
-                      }
+                                            }
                 }
-           }
-       }
+            }
+        }
+    
+                        
+                        
            
            
            
