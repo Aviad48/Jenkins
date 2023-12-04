@@ -6,13 +6,16 @@ pipeline {
         GIT_USERNAME = 'aviad48'
         DOCKER_HUB_ID = 'e9cf8a4e-cf95-40f1-a76e-a368ae9cff2f'
         DOCKER_CONTAINER_NAME = 'my_app'
+        DOCKER_IMAGE_NAME = "aviad539/cicd"
+        PREVIOUS_BUILD_NUMBER = "${currentBuild.number - 1}"  // Get the previous build number
     }
 
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'https://github.com/Aviad48/Jenkins.git']]])
+                    // Checkout the code from the 'development' branch
+                    checkout([$class: 'GitSCM', branches: [[name: '*/Development']], userRemoteConfigs: [[url: 'your_repository_url']]])
                 }
             }
         }
@@ -20,7 +23,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t aviad539/cicd:${env.BUILD_NUMBER} ."
+                    // Build Docker image with JENKINS_BUILD_NUMBER as a tag
+                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER} ."
                 }
             }
         }
@@ -28,9 +32,10 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
+                    // Push the Docker image to Docker Hub 
                     withCredentials([usernamePassword(credentialsId: DOCKER_HUB_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                         sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
-                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                        sh "docker push ${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     }
                 }
             }
@@ -39,7 +44,7 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    def imageName = "aviad539/cicd:${env.BUILD_NUMBER}"
+                    def imageName = "${DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
 
                     // Check if the container exists
                     def existingContainerId = sh(script: "docker ps -q -f name=${DOCKER_CONTAINER_NAME}", returnStdout: true).trim()
@@ -71,31 +76,32 @@ pipeline {
             steps {
                 script {
                     try {
-                        // ... (existing merge steps)
+                        // Fetch the latest changes from origin/development
+                        sh 'git fetch origin development'
+
+                        //Update the local development branch
+                        sh 'git checkout development'
+                        sh 'git pull origin development --allow-unrelated-histories --no-ff'
+
+                        // Switch to main (PROD)
+                        sh 'git checkout main'
+
+                        // Merge changes from 'development' branch
+                        sh 'git merge --allow-unrelated-histories origin/development'
+                        
+                        // Configure Git with user name and email
+                        sh 'git config --global user.name "aviad48"'
+                        sh 'git config --global user.email "aviaddayan1991@gmail.com"'
+
+                        // Push changes to 'main' branch
+                        withCredentials([usernamePassword(credentialsId: GITHUB_APP_CREDENTIALS_ID, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            sh "git push -f https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/Aviad48/Jenkins.git main"
+                        }
                     } catch (Exception e) {
-                        error "Error occurred while merging branches: ${e.message}"
-                    }
-                }
-            }
-        }
-
-        stage('Manual Deployment') {
-            steps {
-                script {
-                    input "Deploy to Docker Engine?"
-                    sh "docker stop ${DOCKER_CONTAINER_NAME}"
-                    sh "docker pull ${imageName}"
-                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
-                }
-            }
-        }
-
-        stage('Push to Docker Repo') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: DOCKER_HUB_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh """echo \${DOCKER_PASSWORD} | docker login -u \${DOCKER_USERNAME} --password-stdin"""
-                        sh "docker push aviad539/cicd:${env.BUILD_NUMBER}"
+                        // Handle merge failure or check failures
+                        echo "Error occurred while merging branches: ${e.message}"
+                        currentBuild.result = 'FAILURE'
+                        error "Failed to merge branches"
                     }
                 }
             }
@@ -107,22 +113,21 @@ pipeline {
             script {
                 catchError {
                     // Rollback in case of failure
-                    // Get the previous build number
-                    previous_version = "${${imageName}" - 1}" 
                     echo 'Rolling back to the previous version...'
                     sh "docker stop ${DOCKER_CONTAINER_NAME}"
-                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} aviad539/cicd:previous_version"
+                    sh "docker rm -f ${DOCKER_CONTAINER_NAME}"
+                    sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME}:${PREVIOUS_BUILD_NUMBER}"  // Use the previous build number for tagging
                 }
                 sh 'git reset --hard HEAD'
             }
         }
         success {
             script {
-                echo 'Build, push, merge, deploy, validation, and push to Docker Repo successful'
+                echo 'Build, push, merge, and deploy successful'
             }
         }
         failure {
-            echo 'Build, push, merge, deploy, or validation failed. Rollback performed.'
+            echo 'Build, push, merge, or deploy failed. Rollback performed.'
         }
     }
 }
