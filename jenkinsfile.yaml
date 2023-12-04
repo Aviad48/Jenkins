@@ -60,7 +60,7 @@ pipeline {
             }
         }                   
         
-                    def appStatus = sh(script: "docker inspect --format='{{ .State.Running }}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
+                    def appStatus = sh(script: "docker inspect --format='{{ .State.Running }}' ${DOCKER_CONTAINER_NAME}"
                     
                        if (appStatus == 'true') {
                     echo "Container is running"
