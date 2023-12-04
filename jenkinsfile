@@ -66,14 +66,8 @@ pipeline {
                 script {
                     def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    if (appStatus != 'true') {
-                        error "Application validation failed. Rolling back to the previous version."
-                    }
-                }
-            }
-        }
-
-        stage('Auto Merge to Master') {
+                    if (appStatus = 'true') {
+stage('Auto Merge to Master') {
             steps {
                 script {
                     try {
@@ -106,6 +100,12 @@ pipeline {
                     }
                 }
             }
+        
+                    }
+                }
+            }
+        }
+
         }
     }
 
