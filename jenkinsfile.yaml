@@ -60,7 +60,7 @@ pipeline {
             }
         }                   
         
-    
+       stages {
         stage('Check Container Status') {
             steps {
                 script {
@@ -79,7 +79,7 @@ pipeline {
                 }
             }
         }
-    
+    }
 
          
 
