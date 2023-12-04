@@ -65,7 +65,7 @@ pipeline {
                 script {
                     def appStatus = sh(script: "docker inspect --format='{{ .State.Running}}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
 
-                    if (appStatus != 'running') {
+                    if (appStatus != 'true') {
                         error "Application validation failed. Rolling back to the previous version."
                     }
                 }
