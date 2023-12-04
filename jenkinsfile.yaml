@@ -58,19 +58,22 @@ pipeline {
                     sh "docker run -d --name ${DOCKER_CONTAINER_NAME} ${imageName}"
                 }
             }
-        }
-        def appStatus = sh(script: "docker inspect --format='{{ .State.Running }}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
+        }                   
+        
+                    def appStatus = sh(script: "docker inspect --format='{{ .State.Running }}' ${DOCKER_CONTAINER_NAME}", returnStatus: true).trim()
+                    
+                       if (appStatus == 'true') {
+                    echo "Container is running"
+                    // Additional actions for when the container is running
+                  } else if (appStatus == 'false') {
+                    echo "Container is not running"
+                  // Additional actions for when the container is not running
+                 } else {
+                    echo "Error checking container status"
+                 // Additional actions for handling an error in checking the container status
+                }
 
-if (appStatus == 'true') {
-    echo "Container is running"
-    // Additional actions for when the container is running
-} else if (appStatus == 'false') {
-    echo "Container is not running"
-    // Additional actions for when the container is not running
-} else {
-    echo "Error checking container status"
-    // Additional actions for handling an error in checking the container status
-}
+         
 
 
         stage('Auto Merge to Master') {
